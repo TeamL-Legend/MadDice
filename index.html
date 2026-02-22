@@ -9,7 +9,6 @@
     
     <style>
         :root {
-            /* Используем переменные темы Telegram для нативности */
             --bg-color: #000000;
             --secondary-bg: #1c1c1d;
             --text-color: #ffffff;
@@ -28,7 +27,37 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            overflow: hidden; /* Чтобы не было лишней прокрутки */
+            overflow: hidden;
+        }
+
+        /* Верхняя панель управления */
+        .header-controls {
+            position: absolute;
+            top: 15px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 15px;
+            z-index: 100;
+        }
+
+        .top-btn {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            border-radius: 12px;
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .top-btn:active {
+            transform: scale(0.9);
+            background: rgba(255, 255, 255, 0.2);
         }
 
         .container {
@@ -37,10 +66,9 @@
             text-align: center;
         }
 
-        /* Основной большой стикер */
         .sticker-main {
-            width: 160px;
-            height: 160px;
+            width: 150px;
+            height: 150px;
             margin: 0 auto 10px;
         }
 
@@ -48,14 +76,12 @@
             font-size: 26px;
             margin: 10px 0;
             font-weight: 800;
-            letter-spacing: 1px;
             background: linear-gradient(45deg, #ffffff, #a1a1a1);
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
         }
 
-        /* Контейнер для текста со стикером в одну строку */
         .welcome-row {
             display: flex;
             align-items: center;
@@ -68,7 +94,7 @@
         .inline-sticker {
             width: 32px;
             height: 32px;
-            margin-left: 6px; /* Отступ стикера от восклицательного знака */
+            margin-left: 6px;
         }
 
         .card {
@@ -76,7 +102,6 @@
             border-radius: 24px;
             padding: 24px;
             border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
         }
 
         .status-badge {
@@ -89,7 +114,6 @@
             font-weight: 900;
             margin-bottom: 15px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
 
         .description {
@@ -109,12 +133,6 @@
             font-size: 16px;
             font-weight: 700;
             cursor: pointer;
-            transition: transform 0.1s ease, background-color 0.2s;
-        }
-
-        .main-button:active {
-            transform: scale(0.96);
-            background-color: #00e676;
         }
 
         .footer-link {
@@ -129,17 +147,16 @@
 </head>
 <body>
 
-    <audio id="bg-music" src="music.mp3" preload="auto"></audio>
+    <div class="header-controls">
+        <button class="top-btn" onclick="handleDeposit()">💰 Пополнить</button>
+        <button class="top-btn" onclick="handleMusicSelect()">🎵 Музыка</button>
+    </div>
+
+    <audio id="bg-music" src="music.mp3" preload="auto" loop></audio>
 
     <div class="container">
         <div class="sticker-main">
-            <lottie-player 
-                src="stick1.json" 
-                background="transparent" 
-                speed="1" 
-                loop 
-                autoplay>
-            </lottie-player>
+            <lottie-player src="stick1.json" background="transparent" speed="1" loop autoplay></lottie-player>
         </div>
 
         <h1>MadDice CASINO</h1>
@@ -167,45 +184,51 @@
     </div>
 
     <script>
-        // Инициализация Telegram Web App
         let tg = window.Telegram.WebApp;
-        tg.expand(); // Развернуть на максимум
-        
-        // Настройка главной системной кнопки Telegram
-        tg.MainButton.setParams({
-            text: "ЗАКРЫТЬ",
-            color: "#1c1c1d",
-            text_color: "#ffffff"
-        }).show();
+        tg.expand();
+        tg.setBackgroundColor('#000000');
 
-        tg.MainButton.onClick(() => {
-            tg.close();
-        });
-
-        // Получаем имя пользователя из данных Telegram
+        // Имя игрока
         const user = tg.initDataUnsafe?.user;
         if (user && user.first_name) {
             document.getElementById("username").innerText = user.first_name;
         }
 
-        // Логика нажатия на кнопку
-        function handleMainAction() {
-            // 1. Тактильный отклик (вибрация "Успех")
-            tg.HapticFeedback.notificationOccurred('success');
-
-            // 2. Воспроизведение музыки
-            const music = document.getElementById("bg-music");
-            music.currentTime = 0; // Начинать сначала при каждом клике
-            music.play().catch(error => {
-                console.error("Ошибка воспроизведения аудио:", error);
+        // Логика кнопки "Пополнить"
+        function handleDeposit() {
+            tg.HapticFeedback.impactOccurred('medium');
+            tg.showPopup({
+                title: 'Баланс',
+                message: 'Релиз сайта MadDice | CASINO совсем скоро! Ожидайте запуска, чтобы получить доступ к пополнению и играм.',
+                buttons: [{type: 'ok', text: 'Жду с нетерпением'}]
             });
-
-            // 3. Показываем нативное уведомление Telegram
-            tg.showAlert("Вы успешно подписаны! Мы пришлем уведомление сразу после запуска. 🎰");
         }
 
-        // Установка фонового цвета через API (для красоты перехода)
-        tg.setBackgroundColor('#000000');
+        // Логика кнопки "Музыка"
+        function handleMusicSelect() {
+            tg.HapticFeedback.selectionChanged();
+            tg.showPopup({
+                title: 'Музыка на сайте',
+                message: 'Выберите композицию из списка:',
+                buttons: [
+                    {id: 'track_main', type: 'default', text: '🎵 MadDice - Main Theme'},
+                    {id: 'cancel', type: 'destructive', text: 'Отмена'}
+                ]
+            }, (buttonId) => {
+                if (buttonId === 'track_main') {
+                    const music = document.getElementById("bg-music");
+                    music.currentTime = 0;
+                    music.play();
+                    tg.HapticFeedback.notificationOccurred('success');
+                }
+            });
+        }
+
+        // Кнопка уведомления
+        function handleMainAction() {
+            tg.HapticFeedback.notificationOccurred('success');
+            tg.showAlert("Вы успешно подписаны! Мы пришлем уведомление сразу после запуска. 🎰");
+        }
     </script>
 </body>
 </html>
