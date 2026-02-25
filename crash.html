@@ -133,10 +133,10 @@
 <div class="glow-sphere" style="bottom: 10%; right: 10%; background: #007aff;"></div>
 
 <div class="header">
-    <div class="brand">Mad<span style="color:#fff">Dice Demo</span></div>
+    <div class="brand">Mad<span style="color:#fff">Dice</span></div>
     <div class="balance-card">
         <span style="color:var(--accent); font-weight:900">$</span>
-        <span id="userBalance">100.00</span>
+        <span id="userBalance">Загрузка...</span>
     </div>
 </div>
 
@@ -148,7 +148,7 @@
         
         <div id="timerContainer" class="timer-box">
             <div class="timer-label">Next Round In</div>
-            <div id="timerVal">15.0</div>
+            <div id="timerVal">10.0</div>
         </div>
 
         <lottie-player id="rocketLottie" src="stick1.json" background="transparent" speed="1.5" loop></lottie-player>
@@ -157,7 +157,7 @@
 
     <div class="bet-panel">
         <div class="input-group">
-            <input type="number" id="betAmount" value="10.00" step="5">
+            <input type="number" id="betAmount" value="1.00" min="0.1" step="0.5">
             <div style="display:flex; align-items:center; padding-right:15px; color:var(--text-dim); font-size:12px; font-weight:700">USDT</div>
         </div>
         <button id="actionBtn" class="main-btn" onclick="handleButtonClick()">Place Bet</button>
@@ -169,6 +169,10 @@
     tg.expand();
     tg.headerColor = '#07090b';
 
+    // Конфигурация связи с бэкендом
+    const API_URL = "https://your-server-address.com"; // ЗАМЕНИТЕ на URL вашего Flask/FastAPI сервера
+    const USER_ID = tg.initDataUnsafe.user?.id || 0;
+
     const canvas = document.getElementById('crashChart');
     const ctx = canvas.getContext('2d');
     const rocket = document.getElementById('rocketLottie');
@@ -176,16 +180,49 @@
     const actionBtn = document.getElementById('actionBtn');
     const multDisplay = document.getElementById('multDisplay');
     
-    let balance = 100.00;
+    let balance = 0.00;
     let isRunning = false;
     let isWaiting = false;
     let hasPlacedBet = false;
-    let hasCashedOut = false; // Новый флаг для контроля кнопки
+    let hasCashedOut = false;
     let currentMult = 1.00;
     let crashPoint = 0;
     let startTime;
     let animationFrame;
     let chartPoints = [];
+
+    // --- ЛОГИКА СВЯЗИ С БД ---
+
+    async function fetchUserData() {
+        try {
+            const response = await fetch(`${API_URL}/get_user?user_id=${USER_ID}`);
+            const data = await response.json();
+            balance = data.balance;
+            updateBalanceUI();
+        } catch (e) {
+            console.error("Ошибка загрузки данных пользователя", e);
+            balanceEl.innerText = "Error";
+        }
+    }
+
+    async function syncGameResult(amount, bet, isWin) {
+        try {
+            await fetch(`${API_URL}/update_balance`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    user_id: USER_ID,
+                    amount: amount, // положительное для выигрыша, отрицательное для ставки
+                    bet: bet,
+                    is_win: isWin
+                })
+            });
+        } catch (e) {
+            console.error("Ошибка синхронизации с БД", e);
+        }
+    }
+
+    // --- ЛОГИКА ГЕЙМПЛЕЯ ---
 
     function initCanvas() {
         const dpr = window.devicePixelRatio || 1;
@@ -211,8 +248,9 @@
         actionBtn.innerText = "Place Bet";
         actionBtn.className = "main-btn";
         actionBtn.disabled = false;
+        actionBtn.style.background = "";
 
-        let timeLeft = 10.0; // Сократил до 10 для динамики
+        let timeLeft = 10.0;
         const interval = setInterval(() => {
             timeLeft -= 0.1;
             document.getElementById('timerVal').innerText = timeLeft.toFixed(1);
@@ -229,8 +267,16 @@
         currentMult = 1.00;
         chartPoints = [];
         
-        // Математика краша
-        crashPoint = (0.98 / (1 - Math.random())).toFixed(2);
+        // --- ЛОГИКА RTP 70% ---
+        // Генерируем случайное число. Если оно > 0.7 (30% случаев), крэш будет очень ранним (1.00-1.10)
+        const rtpRoll = Math.random();
+        if (rtpRoll > 0.7) {
+            crashPoint = (1.0 + Math.random() * 0.1).toFixed(2);
+        } else {
+            // Обычная формула крэша для оставшихся 70%
+            crashPoint = (0.98 / (1 - Math.random())).toFixed(2);
+        }
+        
         if (crashPoint < 1.00) crashPoint = 1.01;
 
         document.getElementById('timerContainer').style.display = 'none';
@@ -273,7 +319,6 @@
         const h = canvas.offsetHeight;
         ctx.clearRect(0, 0, w, h);
 
-        // Сетка
         ctx.strokeStyle = "rgba(255,255,255,0.03)";
         ctx.lineWidth = 1;
         for(let i = 0; i < 10; i++) {
@@ -330,20 +375,23 @@
     function handleButtonClick() {
         const amount = parseFloat(document.getElementById('betAmount').value);
 
-        // Фаза ставки
         if (isWaiting && !hasPlacedBet) {
             if (balance >= amount && amount > 0) {
                 balance -= amount;
-                updateBalance();
+                updateBalanceUI();
                 hasPlacedBet = true;
                 actionBtn.innerText = "BET PLACED";
                 actionBtn.disabled = true;
+                
+                // Синхронизируем списанную ставку с ботом
+                syncGameResult(-amount, amount, false);
+                
                 tg.HapticFeedback.impactOccurred('medium');
             } else {
                 tg.HapticFeedback.notificationOccurred('error');
+                tg.showAlert("Недостаточно средств на балансе бота!");
             }
         } 
-        // Фаза игры (Cash Out)
         else if (isRunning && hasPlacedBet && !hasCashedOut) {
             cashOut();
         }
@@ -355,9 +403,11 @@
         const win = bet * currentMult;
         
         balance += win;
-        updateBalance();
+        updateBalanceUI();
         
-        // Визуальное оформление кнопки после выигрыша
+        // Отправляем выигрыш в БД бота
+        syncGameResult(win, 0, true);
+        
         actionBtn.innerText = "WIN +$" + win.toFixed(2);
         actionBtn.classList.remove('cashout');
         actionBtn.style.background = "var(--success)";
@@ -366,11 +416,12 @@
         tg.HapticFeedback.notificationOccurred('success');
     }
 
-    function updateBalance() {
+    function updateBalanceUI() {
         balanceEl.innerText = balance.toFixed(2);
     }
 
-    // Инициализация
+    // Инициализация при запуске
+    fetchUserData();
     startWaitingPhase();
 </script>
 </body>
