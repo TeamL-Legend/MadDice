@@ -9,12 +9,12 @@
     
     <style>
         :root {
-            /* Используем переменные темы Telegram для нативности */
             --bg-color: #000000;
             --secondary-bg: #1c1c1d;
             --text-color: #ffffff;
             --hint-color: #999999;
             --accent-green: #00c853;
+            --accent-blue: #007aff;
         }
 
         body {
@@ -23,12 +23,35 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
             padding: 0;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Контейнер для страниц */
+        .page {
+            position: absolute;
+            width: 100%;
+            height: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            min-height: 100vh;
-            overflow: hidden; /* Чтобы не было лишней прокрутки */
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            opacity: 0;
+            pointer-events: none;
+            transform: translateX(50px);
+        }
+
+        .page.active {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateX(0);
+        }
+
+        .page.hidden-left {
+            opacity: 0;
+            transform: translateX(-50px);
+            pointer-events: none;
         }
 
         .container {
@@ -37,174 +60,129 @@
             text-align: center;
         }
 
-        /* Основной большой стикер */
-        .sticker-main {
-            width: 160px;
-            height: 160px;
-            margin: 0 auto 10px;
-        }
+        /* Элементы из вашего дизайна */
+        .sticker-main { width: 140px; height: 140px; margin: 0 auto 10px; }
+        h1 { font-size: 26px; margin: 10px 0; font-weight: 800; background: linear-gradient(45deg, #ffffff, #a1a1a1); background-clip: text; -webkit-text-fill-color: transparent; }
+        .welcome-row { display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 20px; }
+        .inline-sticker { width: 32px; height: 32px; margin-left: 6px; }
+        .card { background: var(--secondary-bg); border-radius: 24px; padding: 24px; border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: 0 10px 40px rgba(0,0,0,0.6); }
+        .status-badge { display: inline-block; background: rgba(0, 200, 83, 0.15); color: var(--accent-green); padding: 5px 14px; border-radius: 50px; font-size: 11px; font-weight: 900; margin-bottom: 15px; text-transform: uppercase; }
+        .description { color: var(--hint-color); font-size: 14px; line-height: 1.5; margin-bottom: 20px; }
 
-        h1 {
-            font-size: 26px;
-            margin: 10px 0;
-            font-weight: 800;
-            letter-spacing: 1px;
-            background: linear-gradient(45deg, #ffffff, #a1a1a1);
-            -webkit-background-clip: text;
-            background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
+        /* Кнопки */
+        .main-button { background-color: var(--accent-green); color: white; border: none; padding: 16px; width: 100%; border-radius: 16px; font-size: 16px; font-weight: 700; cursor: pointer; transition: transform 0.1s; margin-bottom: 10px; }
+        .secondary-button { background-color: #333; color: white; border: none; padding: 14px; width: 100%; border-radius: 16px; font-size: 14px; font-weight: 600; cursor: pointer; }
+        .main-button:active, .secondary-button:active { transform: scale(0.96); }
 
-        /* Контейнер для текста со стикером в одну строку */
-        .welcome-row {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 25px;
-        }
+        /* Плеер и Загрузка */
+        .upload-area { border: 2px dashed #444; border-radius: 20px; padding: 30px; margin-bottom: 20px; cursor: pointer; transition: border-color 0.3s; }
+        .upload-area:hover { border-color: var(--accent-blue); }
+        #audio-player { width: 100%; margin-top: 20px; filter: invert(1); }
+        .file-name { font-size: 14px; color: var(--accent-green); margin-top: 10px; word-break: break-all; }
 
-        .inline-sticker {
-            width: 32px;
-            height: 32px;
-            margin-left: 6px; /* Отступ стикера от восклицательного знака */
-        }
-
-        .card {
-            background: var(--secondary-bg);
-            border-radius: 24px;
-            padding: 24px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-        }
-
-        .status-badge {
-            display: inline-block;
-            background: rgba(0, 200, 83, 0.15);
-            color: var(--accent-green);
-            padding: 5px 14px;
-            border-radius: 50px;
-            font-size: 11px;
-            font-weight: 900;
-            margin-bottom: 15px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .description {
-            color: var(--hint-color);
-            font-size: 14px;
-            line-height: 1.5;
-            margin-bottom: 25px;
-        }
-
-        .main-button {
-            background-color: var(--accent-green);
-            color: white;
-            border: none;
-            padding: 16px;
-            width: 100%;
-            border-radius: 16px;
-            font-size: 16px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: transform 0.1s ease, background-color 0.2s;
-        }
-
-        .main-button:active {
-            transform: scale(0.96);
-            background-color: #00e676;
-        }
-
-        .footer-link {
-            margin-top: 30px;
-            color: var(--hint-color);
-            text-decoration: none;
-            font-size: 13px;
-            opacity: 0.5;
-            display: block;
-        }
+        .footer-link { margin-top: 20px; color: var(--hint-color); text-decoration: none; font-size: 13px; opacity: 0.5; }
     </style>
 </head>
 <body>
 
-    <audio id="bg-music" src="music.mp3" preload="auto"></audio>
-
-    <div class="container">
-        <div class="sticker-main">
-            <lottie-player 
-                src="stick1.json" 
-                background="transparent" 
-                speed="1" 
-                loop 
-                autoplay>
-            </lottie-player>
+    <div id="page1" class="page active">
+        <div class="container">
+            <div class="sticker-main">
+                <lottie-player src="stick1.json" background="transparent" speed="1" loop autoplay></lottie-player>
+            </div>
+            <h1>MadDice CASINO</h1>
+            <div class="welcome-row">
+                <span>Удачи, <span id="username">игрок</span>!</span>
+                <div class="inline-sticker">
+                    <lottie-player src="stick.json" background="transparent" speed="1" loop autoplay></lottie-player>
+                </div>
+            </div>
+            <div class="card">
+                <div class="status-badge">В разработке</div>
+                <p class="description">Мы готовим нечто грандиозное. Кости и слоты уже в пути.</p>
+                <button class="main-button" onclick="handleMainAction()">Уведомить о запуске</button>
+                <button class="secondary-button" onclick="goToPage(2)">Дальше (Музыка) →</button>
+            </div>
+            <a href="#" class="footer-link" onclick="tg.close()">@maddice_bot</a>
         </div>
+    </div>
 
-        <h1>MadDice CASINO</h1>
-        
-        <div class="welcome-row">
-            <span>Удачи, <span id="username">игрок</span>!</span>
-            <div class="inline-sticker">
-                <lottie-player src="stick.json" background="transparent" speed="1" loop autoplay></lottie-player>
+    <div id="page2" class="page">
+        <div class="container">
+            <h1>DJ ПУЛЬТ</h1>
+            <div class="card">
+                <p class="description">Выберите трек, который будет играть на фоне вашего везения.</p>
+                
+                <div class="upload-area" onclick="document.getElementById('fileInput').click()">
+                    <div style="font-size: 40px; margin-bottom: 10px;">🎵</div>
+                    <div>Нажмите, чтобы загрузить MP3</div>
+                    <input type="file" id="fileInput" accept="audio/*" style="display: none" onchange="handleFileUpload(event)">
+                </div>
+
+                <div id="music-info" style="display: none;">
+                    <div class="file-name" id="fileName">Название трека.mp3</div>
+                    <audio id="audio-player" controls></audio>
+                </div>
+
+                <button class="secondary-button" style="margin-top: 20px;" onclick="goToPage(1)">← Назад</button>
             </div>
         </div>
-
-        <div class="card">
-            <div class="status-badge">В разработке</div>
-            <p class="description">
-                Мы готовим для вас нечто грандиозное. <br>
-                Совсем скоро здесь появятся кости, слоты и моментальные выплаты.
-            </p>
-            
-            <button class="main-button" onclick="handleMainAction()">
-                Уведомить о запуске
-            </button>
-        </div>
-
-        <a href="#" class="footer-link" onclick="tg.close()">@maddice_bot</a>
     </div>
 
     <script>
-        // Инициализация Telegram Web App
         let tg = window.Telegram.WebApp;
-        tg.expand(); // Развернуть на максимум
-        
-        // Настройка главной системной кнопки Telegram
-        tg.MainButton.setParams({
-            text: "ЗАКРЫТЬ",
-            color: "#1c1c1d",
-            text_color: "#ffffff"
-        }).show();
+        tg.expand();
 
-        tg.MainButton.onClick(() => {
-            tg.close();
-        });
+        // Переключение страниц
+        function goToPage(pageNum) {
+            tg.HapticFeedback.impactOccurred('medium');
+            const p1 = document.getElementById('page1');
+            const p2 = document.getElementById('page2');
 
-        // Получаем имя пользователя из данных Telegram
+            if (pageNum === 2) {
+                p1.classList.remove('active');
+                p1.classList.add('hidden-left');
+                p2.classList.add('active');
+                // Кнопка "Назад" в Telegram
+                tg.BackButton.show();
+            } else {
+                p2.classList.remove('active');
+                p1.classList.remove('hidden-left');
+                p1.classList.add('active');
+                tg.BackButton.hide();
+            }
+        }
+
+        // Обработка кнопки "Назад" в интерфейсе Telegram
+        tg.BackButton.onClick(() => goToPage(1));
+
+        // Загрузка музыки
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const url = URL.createObjectURL(file);
+                const player = document.getElementById('audio-player');
+                const info = document.getElementById('music-info');
+                
+                document.getElementById('fileName').innerText = file.name;
+                player.src = url;
+                info.style.display = 'block';
+                
+                tg.HapticFeedback.notificationOccurred('success');
+            }
+        }
+
+        function handleMainAction() {
+            tg.HapticFeedback.notificationOccurred('success');
+            tg.showAlert("Вы успешно подписаны! 🎰");
+        }
+
+        // Имя пользователя
         const user = tg.initDataUnsafe?.user;
         if (user && user.first_name) {
             document.getElementById("username").innerText = user.first_name;
         }
 
-        // Логика нажатия на кнопку
-        function handleMainAction() {
-            // 1. Тактильный отклик (вибрация "Успех")
-            tg.HapticFeedback.notificationOccurred('success');
-
-            // 2. Воспроизведение музыки
-            const music = document.getElementById("bg-music");
-            music.currentTime = 0; // Начинать сначала при каждом клике
-            music.play().catch(error => {
-                console.error("Ошибка воспроизведения аудио:", error);
-            });
-
-            // 3. Показываем нативное уведомление Telegram
-            tg.showAlert("Вы успешно подписаны! Мы пришлем уведомление сразу после запуска. 🎰");
-        }
-
-        // Установка фонового цвета через API (для красоты перехода)
         tg.setBackgroundColor('#000000');
     </script>
 </body>
